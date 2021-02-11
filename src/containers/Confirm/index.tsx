@@ -4,6 +4,7 @@ import cross from "../../assets/cross.png";
 import tick from "../../assets/tick.png";
 import { Link } from "react-router-dom";
 import { Button } from "../../components/Button";
+import { zeroPadding } from "../../utils/zeroPadding";
 
 type Props = {
   place: string;
@@ -25,9 +26,9 @@ export const Confirm = ({ place }: Props) => {
       <ContentWrapper>
         <Msg>你已進入場所</Msg>
         <Place value={place} readOnly />
-        <Time>{`${year}-${month}-${day} ${hour}:${("00" + minute).slice(
-          -2
-        )}`}</Time>
+        <Time>{`${year}-${zeroPadding(month)}-${zeroPadding(day)} ${zeroPadding(
+          hour
+        )}:${zeroPadding(minute)}`}</Time>
         <Tick src={tick} />
       </ContentWrapper>
       <ActionWrapper>
