@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>管理我嘅島</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body{font-family:'Nunito',sans-serif;background:#F5F5E8;color:#8B5A2B;padding:20px}
+        .box{max-width:600px;margin:0 auto;background:white;padding:30px;border-radius:15px;border:2px solid #96C8A4}
+        input,textarea,select{width:100%;padding:12px;margin:5px 0 15px 0;border:2px solid #ddd;border-radius:10px;box-sizing:border-box;font-family:inherit;font-size:1rem}
+        label{font-weight:bold;color:#4A7A5C}
+        .btn{width:100%;padding:15px;border:none;border-radius:10px;cursor:pointer;color:white;font-size:1.2rem}
+        .green{background:#96C8A4} .red{background:#d9534f} .blue{background:#73a0c0}
+        .lang-switcher { text-align: center; margin-bottom: 20px; font-size: 0.9rem; }
+        .lang-switcher a { color: var(--ac-blue); text-decoration: none; padding: 0 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="lang-switcher">
+        <a href="?lang=zh">中文</a> | <a href="?lang=en">English</a> | <a href="?lang=ja">日本語</a>
+    </div>
+    <div style="text-align:center;margin-bottom:20px">
+        <h1 data-i18n="title">✈️ 管理我嘅島</h1>
+        <a href="index.html" style="text-decoration:none;color:#73a0c0;font-weight:bold" data-i18n="back_home">← 返首頁</a>
+    </div>
+    <div class="box" id="content">Loading...</div>
+
+    <script>
+        const API_URL = "https://api.ttctv-105.cc";
+        const user = JSON.parse(localStorage.getItem('acnh_user'));
+        
+        // --- I18n Script ---
+        const translations = {
+            'zh': {
+                'title': '✈️ 管理我嘅島', 'back_home': '← 返首頁', 'loading': '檢查中...', 'conn_fail': '連線失敗',
+                'reg_host': '登記開島', 'dodo': 'Dodo Code™', 'dodo_ph': '5位 Code', 'island_name': '島名',
+                'limit': '同時上島人數限制', 'notice': '⚠️ 進島注意事項 (顯示在排隊區)', 'notice_ph': '例如: 只限機場離開、禁穿潛水衣...',
+                'note': '備註 (顯示在列表)', 'note_ph': '例如: 賣大頭菜 500！', 'confirm_btn': '確認開島',
+                'opening': '開放中...', 'limit_txt': '限制人數:', 'people': '人', 'view_q': '👁️ 檢視排隊', 'close_btn': '⚠️ 立即關島',
+                'confirm_close': '確定關島？'
+            },
+            'en': {
+                'title': '✈️ Manage My Island', 'back_home': '← Back to Home', 'loading': 'Checking...', 'conn_fail': 'Connection Failed',
+                'reg_host': 'Open Island', 'dodo': 'Dodo Code™', 'dodo_ph': '5-digit Code', 'island_name': 'Island Name',
+                'limit': 'Visitor Limit', 'notice': '⚠️ Notice (Shown in queue)', 'notice_ph': 'E.g., Leave via airport, No wetsuits...',
+                'note': 'Note (Shown in list)', 'note_ph': 'E.g., Turnips @ 500!', 'confirm_btn': 'Open Island',
+                'opening': 'Island Open...', 'limit_txt': 'Limit:', 'people': '', 'view_q': '👁️ View Queue', 'close_btn': '⚠️ Close Island',
+                'confirm_close': 'Are you sure you want to close the island?'
+            },
+            'ja': {
+                'title': '✈️ 島の管理', 'back_home': '← ホームに戻る', 'loading': '確認中...', 'conn_fail': '接続失敗',
+                'reg_host': '島を開放する', 'dodo': 'パスワード (Dodo Code™)', 'dodo_ph': '5桁のコード', 'island_name': '島名',
+                'limit': '同時入場人数制限', 'notice': '⚠️ 注意事項 (待機列に表示)', 'notice_ph': '例：空港からお帰りください、マリンスーツ禁止...',
+                'note': '備考 (リストに表示)', 'note_ph': '例：カブ価 500ベル！', 'confirm_btn': '島を開く',
+                'opening': '開放中...', 'limit_txt': '定員:', 'people': '人', 'view_q': '👁️ 待機列を見る', 'close_btn': '⚠️ 島を閉める',
+                'confirm_close': '島を閉めてもよろしいですか？'
+            }
+        };
+
+        function getLanguage() {
+            const urlLang = new URLSearchParams(window.location.search).get('lang');
+            if (urlLang && translations[urlLang]) return urlLang;
+            const browserLang = navigator.language.split('-')[0];
+            return translations[browserLang] ? browserLang : 'zh';
+        }
+        
+        function translatePage(lang) {
+            const t = translations[lang];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                el.textContent = t[el.getAttribute('data-i18n')];
+            });
+             document.querySelectorAll('a').forEach(a => {
+                if (a.href && !a.href.includes('javascript')) {
+                    const url = new URL(a.href, window.location.href);
+                    url.searchParams.set('lang', lang);
+                    a.href = url.href;
+                }
+            });
+        }
+
+        const currentLang = getLanguage();
+        const t = translations[currentLang];
+
+        if(!user) window.location.href=`login.html?lang=${currentLang}`;
+
+        const content = document.getElementById('content');
+        document.addEventListener('DOMContentLoaded', () => {
+            translatePage(currentLang);
+            checkStatus();
+        });
+
+        async function checkStatus() {
+            content.innerHTML = t.loading;
+            try {
+                const res = await fetch(`${API_URL}/my-status?email=${encodeURIComponent(user.email)}`);
+                const json = await res.json();
+                if(json.data) showClose(json.data); else showHost();
+            } catch(e) { content.innerHTML = t.conn_fail; }
+        }
+
+        function showHost() {
+            content.innerHTML = `
+                <h3>${t.reg_host}</h3>
+                <label>${t.dodo}</label>
+                <input id="dodo" placeholder="${t.dodo_ph}" maxlength="5">
+                <label>${t.island_name}</label>
+                <input id="name" value="${user.username}的島">
+                <label>${t.limit}</label>
+                <select id="maxUsers">
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4" selected>4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                </select>
+                <label style="color:#e67e22">${t.notice}</label>
+                <textarea id="notice" placeholder="${t.notice_ph}"></textarea>
+                <label>${t.note}</label>
+                <textarea id="note" placeholder="${t.note_ph}"></textarea>
+                <button onclick="host()" class="btn green">${t.confirm_btn}</button>
+            `;
+        }
+
+        function showClose(data) {
+            content.innerHTML = `
+                <h3 style="text-align:center;color:#4A7A5C">${t.opening}</h3>
+                <p>${t.island_name}: ${data.island_name}</p>
+                <p>${t.limit_txt} ${data.max_visitors} ${t.people}</p>
+                <p style="font-size:1.5rem;color:#73a0c0;font-weight:bold;text-align:center">${data.dodo_code}</p>
+                <a href="island.html?host=${encodeURIComponent(user.email)}&lang=${currentLang}" class="btn blue" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:10px">${t.view_q}</a>
+                <button onclick="closeIsland()" class="btn red">${t.close_btn}</button>
+            `;
+        }
+
+        async function host() {
+            const payload = {
+                email: user.email, 
+                islandName: document.getElementById('name').value,
+                dodoCode: document.getElementById('dodo').value, 
+                note: document.getElementById('note').value,
+                maxVisitors: document.getElementById('maxUsers').value,
+                notice: document.getElementById('notice').value
+            };
+            await fetch(`${API_URL}/host`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+            checkStatus();
+        }
+
+        async function closeIsland() {
+            if(!confirm(t.confirm_close)) return;
+            await fetch(`${API_URL}/close`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email: user.email}) });
+            checkStatus();
+        }
+    </script>
+</body>
+</html>
