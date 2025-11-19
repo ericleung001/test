@@ -65,16 +65,37 @@
         }
         
         function translatePage(lang) {
-            const t = translations[lang];
+            const langDict = translations[lang] || translations['zh'];
+            
+            // 1. 翻譯文字內容
             document.querySelectorAll('[data-i18n]').forEach(el => {
-                el.textContent = t[el.getAttribute('data-i18n')];
+                const key = el.getAttribute('data-i18n');
+                if (langDict[key]) el.innerHTML = langDict[key];
             });
-             document.querySelectorAll('a').forEach(a => {
-                if (a.href && !a.href.includes('javascript')) {
-                    const url = new URL(a.href, window.location.href);
-                    url.searchParams.set('lang', lang);
-                    a.href = url.href;
-                }
+
+            // 2. 翻譯輸入框提示 (Placeholders) - 只在有此屬性時執行
+            document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+                const key = el.getAttribute('data-i18n-ph');
+                if (langDict[key]) el.placeholder = langDict[key];
+            });
+
+            // 3. 更新頁面連結 (保持當前語言)
+            document.querySelectorAll('a').forEach(a => {
+                // *** [關鍵修正]：如果是語言切換區 (.lang-switcher) 的連結，絕對不要修改它 ***
+                if (a.closest('.lang-switcher')) return;
+
+                try {
+                    // 只修改站內連結 (排除 javascript: 或外部連結)
+                    if (a.href && !a.href.includes('javascript') && (a.protocol === window.location.protocol || a.protocol === "file:")) {
+                        const url = new URL(a.href, window.location.href);
+                        if (url.hostname === window.location.hostname || url.protocol === "file:") {
+                            if (a.getAttribute('href') !== '#') {
+                                url.searchParams.set('lang', lang); // 將當前語言帶到下一頁
+                                a.href = url.href;
+                            }
+                        }
+                    }
+                } catch (e) { /* ignore error */ }
             });
         }
 
